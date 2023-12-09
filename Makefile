@@ -4,9 +4,8 @@ CC = gcc
 
 # the most basic way of building that is most likely to work on most systems
 .PHONY: run
-run: run.c
-	$(CC) -O3 -o run run.c -lm
-	$(CC) -O3 -o runq runq.c -lm
+run: run.cpp
+	$(CXX) -DUSE_C10D_GLOO -DUSE_C10D_NCCL -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -isystem /home/bertrand/.conda/envs/pytorch-3.10/lib/python3.10/site-packages/torch/include -isystem /home/bertrand/.conda/envs/pytorch-3.10/lib/python3.10/site-packages/torch/include/torch/csrc/api/include -isystem /usr/local/cuda-12/include -D_GLIBCXX_USE_CXX11_ABI=1 -std=gnu++17 -D_GLIBCXX_USE_CXX11_ABI=1 run.cpp -o run -L/home/bertrand/.conda/envs/pytorch-3.10/lib/python3.10/site-packages/torch/lib   -L/lib/intel64   -L/lib/intel64_win   -L/lib/win-x64 -Wl,-rpath,/home/bertrand/.conda/envs/pytorch-3.10/lib/python3.10/site-packages/torch/lib:/lib/intel64:/lib/intel64_win:/lib/win-x64:/usr/local/cuda-12/lib64:/home/bertrand/.conda/envs/pytorch-3.10/lib -L/home/bertrand/.conda/envs/pytorch-3.10/lib  -ltorch -lc10 -ltorch_cpu -fpermissive
 
 # useful for a debug build, can then e.g. analyze with valgrind, example:
 # $ valgrind --leak-check=full ./run out/model.bin -n 3

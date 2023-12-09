@@ -264,7 +264,7 @@ class Transformer(nn.Module):
         else:
             # inference-time mini-optimization: only forward the output on the very last position
             logits = self.output(h[:, [-1], :]) # note: using list [-1] to preserve the time dim
-            self.last_loss = None
+            #self.last_loss = None
 
         return logits
 
