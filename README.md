@@ -44,17 +44,23 @@ Once upon a time, there was a little girl named Lily. She loved to play outside 
 * The generated .so depends on libtorch.so, which is a huge dependency
   - And makes linking aggravating, see the stupid `LD_LIBRARY_PATH` above.  Also why I switched from pure Make to CMake
 * There's no KV cache, because I haven't figured out a way to aot_compile one.  Mumble mumble mutations in graph mumble.
-* Performance is kind of bad (probably due to the lack of KV cache), although
-  if you're running on a 4-socket, 96-core behemoth like me, you may not notice
-  because it's hidden by massive parallelism in MKL.  And because it's tricky
-  to tweak raw OpenMP to behave well on llama2.c (spoiler alert: 192 threads is
-  too many)
+* Performance is kind of bad:
+  - NB: benchmarking is hard on a massively multicore machine (e.g. 96 cores)
+    - Compile and run with the same # of threads - using numactl - inductor burns in threadcount
+    - 1 core is probably a good place to start, parallelism hides a lot of sins
+    - The base llama2.c runs best with ~16 threads on my box
+  - We might want to start with a more tuned base model, I mostly chose this one for simplicity (i.e., getting the darn thing working)
+  - Lack of KV cache clearly hurts, you can see generation slowing as it goes on
 * The API is kind of yucky:
-  - What's an Aoti?  Is it like a Yeti?
+  - What's an Aoti?  Is it like a Yeti? (Yes, *I* know this, but who outside of this team?)
   - A ModelContainerRunner?  Seems like there is one more layer of indirection that is indirecting us through an extra layer to get to what we need.
   - 1, true, nullptr
   - It takes `at::Tensor`s (and uses `at::Tensor`s internally although Scott's diff should fix that).
-
+* The generated C++ is:
+  * Hidden in /tmp/torchinductor_$USER
+  * Very ... generated looking.  Like, `x+=static_cast<long>(1L)` for `x++`.  See [gencode.cpp](gencode.cpp).
+  * Maybe no one cares?  We produce a .so where the user tells us to.
+* I haven't done anything at all with numerics, so this is float32 inference.  Idk if fp16 or bf16 are expected to work on CPU, and int8/int4 probably need more work still.
 
 # Original README
 
