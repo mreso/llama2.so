@@ -21,15 +21,12 @@ python compile.py --checkpoint stories15M.pt stories15M.so
 
 Build the inference harness:
 ```bash
-mkdir build
-cd build
-cmake -DCMAKE_PREFIX_PATH=`python3 -c 'import torch;print(torch.utils.cmake_prefix_path)'` ..
-make run
+cmake -Bbuild -DCMAKE_PREFIX_PATH=`python3 -c 'import torch;print(torch.utils.cmake_prefix_path)'`
+cmake --build build
 ```
 
 Run it!  If it complains that it `couldn't load tokenizer.bin`, make sure you're running from the repo root instead of your `build` directory.  The `LD_LIBRARY_PATH` is needed because ¯\_(ツ)_/¯
 ```bash
-cd ..
 LD_LIBRARY_PATH=$CONDA_PREFIX/lib ./build/run ./stories15M.so
 ```
 
