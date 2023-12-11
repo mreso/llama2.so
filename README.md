@@ -41,6 +41,7 @@ Once upon a time, there was a little girl named Lily. She loved to play outside 
 ## What needs improving?
 
 * The weights are burned in to the ELF file and due to section size limits can't be over 2 GB.  Which is a problem since the smallest Meta Llama is 7B, or 28GB in fp32 :-/
+* Setting `dynamic_dim` didn't work if I made my inputs as big as possible (so like `x=torch.randn(1, 256)` and `dynamic_dim(x, 1) <= 256` did not work, but `x=torch.randn(1, 128)` did)
 * The generated .so depends on libtorch.so, which is a huge dependency
   - And makes linking aggravating, see the stupid `LD_LIBRARY_PATH` above.  Also why I switched from pure Make to CMake
 * There's no KV cache, because I haven't figured out a way to aot_compile one.  Mumble mumble mutations in graph mumble.
