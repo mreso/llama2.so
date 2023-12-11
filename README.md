@@ -1,4 +1,62 @@
-## llama2.c
+## llama2.so
+
+I've hacked Andrej Karpathy's magnificent llama2.c to compile the model from PyTorch source to a shared library (.so) using TorchInductor.
+This repo is a fork of [llama2.c](https://github.com/karpathy/llama2.c) and you should use his repo for... pretty much everything, unless you are dead set on compiling your model directly from Python.
+
+<p align="center">
+  <img src="assets/llama-python.png" width="300" height="300" alt="Cute Llama Being Hugged By Python">
+</p>
+
+## Show me how
+
+Get a PyTorch Llama 2 checkpoint.  This is one trained by Andrej on the TinyStories dataset:
+```bash
+wget https://huggingface.co/karpathy/tinyllamas/resolve/main/stories15M.pt
+```
+
+Compile it:
+```bash
+python compile.py --checkpoint stories15M.pt stories15M.so
+```
+
+Build the inference harness:
+```bash
+mkdir build
+cd build
+cmake -DCMAKE_PREFIX_PATH=`python3 -c 'import torch;print(torch.utils.cmake_prefix_path)'` ..
+make run
+```
+
+Run it!  If it complains that it `couldn't load tokenizer.bin`, make sure you're running from the repo root instead of your `build` directory.  The `LD_LIBRARY_PATH` is needed because ¯\_(ツ)_/¯
+```bash
+cd ..
+LD_LIBRARY_PATH=$CONDA_PREFIX/lib ./build/run ./stories15M.so
+```
+
+This should print some cute story like this one (which you get by setting temperature to 0 with `-t 0.0`).
+```
+Once upon a time, there was a little girl named Lily. She loved to play outside in the sunshine. One day, she saw a big, red ball in the sky. It was the sun! She thought it was so pretty.
+```
+
+## What needs improving?
+
+* The weights are burned in to the ELF file and due to section size limits can't be over 2 GB.  Which is a problem since the smallest Meta Llama is 7B, or 28GB in fp32 :-/
+* The generated .so depends on libtorch.so, which is a huge dependency
+  - And makes linking aggravating, see the stupid `LD_LIBRARY_PATH` above.  Also why I switched from pure Make to CMake
+* There's no KV cache, because I haven't figured out a way to aot_compile one.  Mumble mumble mutations in graph mumble.
+* Performance is kind of bad (probably due to the lack of KV cache), although
+  if you're running on a 4-socket, 96-core behemoth like me, you may not notice
+  because it's hidden by massive parallelism in MKL.  And because it's tricky
+  to tweak raw OpenMP to behave well on llama2.c (spoiler alert: 192 threads is
+  too many)
+* The API is kind of yucky:
+  - What's an Aoti?  Is it like a Yeti?
+  - A ModelContainerRunner?  Seems like there is one more layer of indirection that is indirecting us through an extra layer to get to what we need.
+  - 1, true, nullptr
+  - It takes `at::Tensor`s (and uses `at::Tensor`s internally although Scott's diff should fix that).
+
+
+# Original README
 
 <p align="center">
   <img src="assets/llama_cute.jpg" width="300" height="300" alt="Cute Llama">
