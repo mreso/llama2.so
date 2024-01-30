@@ -8,7 +8,7 @@
 #include <math.h>
 #include <string.h>
 
-#include <torch/csrc/inductor/aoti_model_container_runner.h>
+#include <torch/csrc/inductor/aoti_runner/model_container_runner_cpu.h>
 #include <torch/torch.h>
 
 // ----------------------------------------------------------------------------
@@ -27,7 +27,7 @@ typedef struct {
 typedef struct {
     Config config; // the hyperparameters of the architecture (the blueprint)
     RunState state; // buffers for the "wave" of activations in the forward pass
-    torch::inductor::AOTIModelContainerRunner *runner;
+    torch::inductor::AOTIModelContainerRunnerCpu *runner;
 } Transformer;
 
 void malloc_run_state(RunState* s, Config* p) {
@@ -62,11 +62,9 @@ void build_transformer(Transformer *t, char* checkpoint_path, int vocab_size, in
     t->config.vocab_size = vocab_size;
     t->config.seq_len = seq_len;
     malloc_run_state(&t->state, &t->config);
-    t->runner = new torch::inductor::AOTIModelContainerRunner(
+    t->runner = new torch::inductor::AOTIModelContainerRunnerCpu(
         checkpoint_path,
-        1,
-        true,
-        nullptr
+        1
     );
 }
 
@@ -104,7 +102,8 @@ float* forward(Transformer* transformer, int token, int pos) {
     RunState* s = &transformer->state;
     s->toks[pos] = token;
     torch::Tensor token_tensor = torch::from_blob(s->toks, {1, pos + 1}, torch::kLong);
-    torch::Tensor result = transformer->runner->run({token_tensor})[0];
+    std::vector<torch::Tensor> inputs{token_tensor};
+    torch::Tensor result = transformer->runner->run(inputs)[0];
     memcpy(s->logits, result[0].data_ptr(), p->vocab_size * sizeof(float));
     return s->logits;
 }
