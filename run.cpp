@@ -8,8 +8,12 @@
 #include <math.h>
 #include <string.h>
 
-#include <torch/csrc/inductor/aoti_model_container_runner.h>
 #include <torch/torch.h>
+#if TORCH_VERSION_MAJOR == 2 && TORCH_VERSION_MINOR == 2
+  #include <torch/csrc/inductor/aoti_model_container_runner.h>
+#else
+  #include <torch/csrc/inductor/aoti_runner/model_container_runner_cpu.h>
+#endif
 
 // ----------------------------------------------------------------------------
 // Transformer model
@@ -62,12 +66,18 @@ void build_transformer(Transformer *t, char* checkpoint_path, int vocab_size, in
     t->config.vocab_size = vocab_size;
     t->config.seq_len = seq_len;
     malloc_run_state(&t->state, &t->config);
-    t->runner = new torch::inductor::AOTIModelContainerRunner(
-        checkpoint_path,
-        1,
-        true,
-        nullptr
-    );
+    
+    #if TORCH_VERSION_MAJOR == 2 && TORCH_VERSION_MINOR == 2
+        t->runner = new torch::inductor::AOTIModelContainerRunner(
+            checkpoint_path,
+            1,
+            true,
+            nullptr
+        );
+    #else
+        std::string tmp(checkpoint_path);
+        t->runner = new torch::inductor::AOTIModelContainerRunnerCpu(tmp);
+    #endif
 }
 
 void free_transformer(Transformer* t) {
@@ -104,7 +114,12 @@ float* forward(Transformer* transformer, int token, int pos) {
     RunState* s = &transformer->state;
     s->toks[pos] = token;
     torch::Tensor token_tensor = torch::from_blob(s->toks, {1, pos + 1}, torch::kLong);
-    torch::Tensor result = transformer->runner->run({token_tensor})[0];
+    #if TORCH_VERSION_MAJOR == 2 && TORCH_VERSION_MINOR == 2
+        torch::Tensor result = transformer->runner->run({token_tensor})[0];
+    #else
+        std::vector<torch::Tensor> tmp{token_tensor};
+        torch::Tensor result = transformer->runner->run(tmp)[0];
+    #endif
     memcpy(s->logits, result[0].data_ptr(), p->vocab_size * sizeof(float));
     return s->logits;
 }
